@@ -1,23 +1,48 @@
 import AnalyzeForm from "@/components/AnalyzeForm";
 
-// トップページ。
-//
-// Server ComponentのままでOK。
-// ユーザー操作が必要な部分だけ
-// AnalyzeFormをClient Componentとして分離している。
 export default function Home() {
   return (
-    <main>
-      <h1>
-        AI Work Assistant
-      </h1>
+    <main className="page">
+      <header className="appHeader">
+        <div className="appHeaderInner">
+          <div className="brand">
+            <div className="brandMark">A</div>
 
-      <p>
-        GitHub RepositoryをAIが分析して、
-        今優先して対応すべきことを提案します。
-      </p>
+            <div className="brandText">
+              <span className="brandName">AI Work Assistant</span>
+              <span className="brandDescription">
+                Repository Intelligence
+              </span>
+            </div>
+          </div>
 
-      <AnalyzeForm />
+          <div className="headerStatus">
+            <span className="statusIndicator" />
+            Ready
+          </div>
+        </div>
+      </header>
+
+      <div className="pageContainer">
+        <section className="hero">
+          <div className="heroLabel">
+            GitHub Repository Analysis
+          </div>
+
+          <h1>
+            今、何を優先すべきかを
+            <br />
+            AIが判断する。
+          </h1>
+
+          <p>
+            Pull Request、変更内容、ブランチ依存、CI情報を分析し、
+            開発者が次に対応すべきことを1つに絞って提案します。
+          </p>
+        </section>
+
+        <AnalyzeForm />
+      </div>
     </main>
   );
 }

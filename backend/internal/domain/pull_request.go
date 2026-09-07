@@ -9,6 +9,10 @@ type ChangedFile struct {
 	Additions int
 	Deletions int
 	Changes   int
+
+	// GitHubが返すdiff形式の変更内容。
+	// AIが実際のコード変更内容を判断するために使用する。
+	Patch string
 }
 
 // CheckRun はPRの最新コミットに対して実行された

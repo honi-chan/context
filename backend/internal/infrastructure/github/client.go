@@ -9,22 +9,36 @@ import (
 	"github.com/yourname/ai-work-assistant/internal/domain"
 )
 
+// Client はGitHub Repositoryへのアクセスを担当するAdapter。
+//
+// GitHub SDKをrepository/usecase層から隠し、
+// アプリケーション内部ではdomain.PullRequestとして扱えるようにする。
 type Client struct {
-	client *gogithub.Client
+	client  *gogithub.Client
+	fetcher *pullRequestFetcher
 }
 
-func NewClient(client *gogithub.Client) *Client {
+// NewClient はGitHub Clientを生成する。
+func NewClient(
+	client *gogithub.Client,
+) *Client {
 	return &Client{
 		client: client,
+
+		// PR詳細取得はFetcherへ委譲する。
+		fetcher: newPullRequestFetcher(client),
 	}
 }
 
+// ListPullRequests はOpen状態のPull Request一覧を取得し、
+// AI分析に必要な詳細情報を付与してdomain型へ変換する。
 func (c *Client) ListPullRequests(
 	ctx context.Context,
 	owner string,
 	repo string,
 ) ([]domain.PullRequest, error) {
 
+	// まずOpen状態のPull Request一覧だけ取得する。
 	githubPRs, _, err := c.client.PullRequests.List(
 		ctx,
 		owner,
@@ -48,66 +62,36 @@ func (c *Client) ListPullRequests(
 
 	for _, pr := range githubPRs {
 
-		// PRの変更ファイル一覧を取得する。
-		files, _, err := c.client.PullRequests.ListFiles(
+		// Files / CheckRunsなど、
+		// PRに紐づく詳細取得はFetcherへ任せる。
+		details, err := c.fetcher.fetch(
 			ctx,
 			owner,
 			repo,
-			pr.GetNumber(),
-			&gogithub.ListOptions{
-				PerPage: 100,
-			},
+			pr,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"list pull request files: pull_number=%d: %w",
-				pr.GetNumber(),
+				"fetch pull request details: %w",
 				err,
 			)
 		}
 
-		// PRの最新コミットSHAを取得する。
-		//
-		// Check Runsはコミットに紐づいているため、
-		// Head側の最新SHAを指定する。
-		headSHA := pr.GetHead().GetSHA()
+		// GitHub固有の型からdomain型への変換は
+		// Mapperへ任せる。
+		pullRequest := mapPullRequest(
+			pr,
+			details.files,
+			details.checkRuns,
 
-		// GitHub Actions / CI / Testなどの
-		// Check Run一覧を取得する。
-		checkRunsResult, _, err := c.client.Checks.ListCheckRunsForRef(
-			ctx,
-			owner,
-			repo,
-			headSHA,
-			&gogithub.ListCheckRunsOptions{
-				ListOptions: gogithub.ListOptions{
-					PerPage: 100,
-				},
-			},
+			// fetch()が正常終了したため、
+			// Check Runs APIの取得自体は成功している。
+			true,
 		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"list check runs: pull_number=%d sha=%s: %w",
-				pr.GetNumber(),
-				headSHA,
-				err,
-			)
-		}
 
-		// ここまで到達している時点で
-		// ListCheckRunsForRefは正常終了している。
-		//
-		// そのためCheckRunsが0件だったとしても
-		// 「取得失敗」ではなく
-		// 「取得成功した結果、0件」と判断できる。
 		pullRequests = append(
 			pullRequests,
-			mapPullRequest(
-				pr,
-				files,
-				checkRunsResult.CheckRuns,
-				true,
-			),
+			pullRequest,
 		)
 	}
 

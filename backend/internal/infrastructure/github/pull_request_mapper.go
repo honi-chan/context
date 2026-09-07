@@ -30,6 +30,9 @@ func mapPullRequest(
 				Additions: file.GetAdditions(),
 				Deletions: file.GetDeletions(),
 				Changes:   file.GetChanges(),
+
+				// PRの差分内容もdomainへ渡す。
+				Patch: file.GetPatch(),
 			},
 		)
 	}
