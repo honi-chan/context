@@ -4,25 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"time"
 
 	"google.golang.org/genai"
 
 	"github.com/yourname/ai-work-assistant/internal/domain"
 )
 
-// Client はGemini APIを利用するAI Adapter。
-//
-// application層から渡されたdomain.PullRequestを
-// Geminiが理解できるプロンプトへ変換して送信する。
 type Client struct {
 	client *genai.Client
 	model  string
 }
 
-// NewClient はGemini Adapterを生成する。
-//
-// genai.Clientを外から受け取ることで、
-// Client自身はAPIキーの読み込みなどを担当しない。
 func NewClient(
 	client *genai.Client,
 	model string,
@@ -33,26 +27,23 @@ func NewClient(
 	}
 }
 
-// AnalyzePullRequests はPR一覧をGeminiへ渡し、
-// 「今最も優先して対応すべきこと」を分析させる。
 func (c *Client) AnalyzePullRequests(
 	ctx context.Context,
 	pullRequests []domain.PullRequest,
 ) (string, error) {
 
-	// PR一覧をJSONへ変換する。
-	//
-	// Geminiへ構造化された情報を渡すことで、
-	// PRが複数あっても内容を理解しやすくする。
-	prJSON, err := json.MarshalIndent(pullRequests, "", "  ")
+	prJSON, err := json.MarshalIndent(
+		pullRequests,
+		"",
+		"  ",
+	)
 	if err != nil {
-		return "", fmt.Errorf("marshal pull requests: %w", err)
+		return "", fmt.Errorf(
+			"marshal pull requests: %w",
+			err,
+		)
 	}
 
-	// Geminiへ渡すプロンプト。
-	//
-	// MVPでは「1つだけ選ぶ」という役割に限定する。
-	// AIに何でも判断させず、責務を明確にしておく。
 	prompt := fmt.Sprintf(`
 あなたはソフトウェア開発チームを支援するAIアシスタントです。
 
@@ -73,24 +64,60 @@ func (c *Client) AnalyzePullRequests(
 - 記載されていないプロジェクト事情を推測しないでください。
 - 判断材料が不足している場合は、そのことを明示してください。
 - Pull Requestのタイトルだけで変更内容を断定しないでください。
+- CheckRunsFetched=true かつ CheckRuns=[] の場合、
+  「CI情報を取得できなかった」と判断しないでください。
+  GitHubからCheck Runsの取得には成功したものの、
+  対象コミットにCheck Runが存在しなかった状態として扱ってください。
 
 Pull Requests:
 
 %s
 `, string(prJSON))
 
-	// Gemini APIを呼び出す。
-	response, err := c.client.Models.GenerateContent(
-		ctx,
-		c.model,
-		genai.Text(prompt),
-		nil,
-	)
-	if err != nil {
-		return "", fmt.Errorf("generate Gemini content: %w", err)
+	const maxAttempts = 3
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		response, err := c.client.Models.GenerateContent(
+			ctx,
+			c.model,
+			genai.Text(prompt),
+			nil,
+		)
+
+		if err == nil {
+			return response.Text(), nil
+		}
+
+		// Gemini APIの失敗内容を各試行ごとに記録する。
+		// 503 / 429 / その他のエラーを切り分けやすくする。
+		log.Printf(
+			"Gemini GenerateContent failed: attempt=%d/%d model=%s error=%v",
+			attempt,
+			maxAttempts,
+			c.model,
+			err,
+		)
+
+		if attempt == maxAttempts {
+			return "", fmt.Errorf(
+				"generate Gemini content after %d attempts: %w",
+				maxAttempts,
+				err,
+			)
+		}
+
+		// 1秒 → 2秒 → 4秒 の指数バックオフ。
+		waitDuration := time.Second * time.Duration(1<<(attempt-1))
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+
+		case <-time.After(waitDuration):
+		}
 	}
 
-	// Gemini SDKのレスポンスから
-	// テキスト部分だけを取り出してapplication層へ返す。
-	return response.Text(), nil
+	return "", fmt.Errorf(
+		"generate Gemini content failed",
+	)
 }
