@@ -49,15 +49,27 @@ func (c *Client) ListPullRequests(
 	pullRequests := make([]domain.PullRequest, 0, len(githubPRs))
 
 	for _, pr := range githubPRs {
-		pullRequests = append(pullRequests, domain.PullRequest{
-			ID:        pr.GetNumber(),
-			Title:     pr.GetTitle(),
-			Author:    pr.GetUser().GetLogin(),
-			State:     pr.GetState(),
-			URL:       pr.GetHTMLURL(),
-			CreatedAt: pr.GetCreatedAt().Time,
-			UpdatedAt: pr.GetUpdatedAt().Time,
-		})
+		pullRequests = append(
+			pullRequests,
+			domain.PullRequest{
+				ID:    pr.GetNumber(),
+				Title: pr.GetTitle(),
+
+				// GitHub Pull Requestの本文を
+				// アプリ内部のPullRequestへ変換する。
+				//
+				// GetBody()を利用することで、
+				// bodyがnilの場合でも空文字として安全に扱える。
+				Body: pr.GetBody(),
+
+				Author: pr.GetUser().GetLogin(),
+				State:  pr.GetState(),
+				URL:    pr.GetHTMLURL(),
+
+				CreatedAt: pr.GetCreatedAt().Time,
+				UpdatedAt: pr.GetUpdatedAt().Time,
+			},
+		)
 	}
 
 	return pullRequests, nil
