@@ -1,2 +1,11 @@
-# context
-An AI assistant that understands your work context and helps you decide what to do next.
+Context
+
+AI that understands what you're working on.
+
+## Architecture
+
+Frontend: Next.js
+Backend: Go + Echo
+
+## Development
+...
