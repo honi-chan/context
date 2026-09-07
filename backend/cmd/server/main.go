@@ -8,6 +8,7 @@ import (
 
 	gogithub "github.com/google/go-github/v68/github"
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"google.golang.org/genai"
 
 	"github.com/yourname/ai-work-assistant/internal/handler"
@@ -113,6 +114,33 @@ func main() {
 	// ========================================
 
 	e := echo.New()
+
+	// ========================================
+	// Middleware
+	// ========================================
+
+	// Next.js(localhost:3000)から
+	// Go API(localhost:8080)へのアクセスを許可する。
+	//
+	// 開発環境用の設定。
+	// 本番環境では実際のFrontend Domainへ制限する。
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodOptions,
+		},
+
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+		},
+	}))
 
 	// 動作確認用Health Check。
 	e.GET("/health", func(c *echo.Context) error {

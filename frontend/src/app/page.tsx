@@ -1,21 +1,23 @@
-"use client";
+import AnalyzeForm from "@/components/AnalyzeForm";
 
-import { useState } from "react";
-
+// トップページ。
+//
+// Server ComponentのままでOK。
+// ユーザー操作が必要な部分だけ
+// AnalyzeFormをClient Componentとして分離している。
 export default function Home() {
-  const [status, setStatus] = useState("");
-
-  const checkBackend = async () => {
-    const response = await fetch("http://localhost:8080/health");
-    const data = await response.json();
-
-    setStatus(data.status);
-  };
-
   return (
     <main>
-      <button onClick={checkBackend}>Backend接続確認</button>
-      <p>{status}</p>
+      <h1>
+        AI Work Assistant
+      </h1>
+
+      <p>
+        GitHub RepositoryをAIが分析して、
+        今優先して対応すべきことを提案します。
+      </p>
+
+      <AnalyzeForm />
     </main>
   );
 }
