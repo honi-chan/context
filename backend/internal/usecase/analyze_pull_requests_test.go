@@ -62,13 +62,27 @@ func TestAnalyzePullRequestsUseCase_Execute(t *testing.T) {
 	// GitHubから取得できたことにするPRデータ。
 	pullRequests := []domain.PullRequest{
 		{
-			ID:        123,
-			Title:     "Fix login bug",
-			Author:    "haruki",
-			State:     "open",
-			URL:       "https://github.com/yourname/example/pull/123",
-			CreatedAt: time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC),
-			UpdatedAt: time.Date(2026, 9, 7, 10, 0, 0, 0, time.UTC),
+			ID:    123,
+			Title: "Fix login bug",
+
+			// AIへ渡すPR本文。
+			Body: "ログイン時に500エラーが発生する問題を修正します。",
+
+			Author: "haruki",
+			State:  "open",
+			URL:    "https://github.com/yourname/example/pull/123",
+
+			CreatedAt: time.Date(
+				2026, 9, 1,
+				10, 0, 0, 0,
+				time.UTC,
+			),
+
+			UpdatedAt: time.Date(
+				2026, 9, 7,
+				10, 0, 0, 0,
+				time.UTC,
+			),
 		},
 	}
 

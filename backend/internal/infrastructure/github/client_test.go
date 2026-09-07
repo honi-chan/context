@@ -39,6 +39,7 @@ func TestClient_ListPullRequests(t *testing.T) {
 			{
 				"number": 123,
 				"title": "Fix login bug",
+				"body": "ログイン時に500エラーが発生する問題を修正します。",
 				"state": "open",
 				"html_url": "https://github.com/openai/example/pull/123",
 				"user": {
@@ -98,6 +99,16 @@ func TestClient_ListPullRequests(t *testing.T) {
 			"unexpected Title: got=%s want=%s",
 			pr.Title,
 			"Fix login bug",
+		)
+	}
+
+	// GitHub APIのbodyが
+	// domain.PullRequest.Bodyへ正しく変換されたか確認する。
+	if pr.Body != "ログイン時に500エラーが発生する問題を修正します。" {
+		t.Errorf(
+			"unexpected Body: got=%q want=%q",
+			pr.Body,
+			"ログイン時に500エラーが発生する問題を修正します。",
 		)
 	}
 
